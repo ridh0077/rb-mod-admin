@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GMA Admin Panel (Firebase)</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <style>
+        :root {
+            --bg-color: #f0f2f5;
+            --surface-color: #ffffff;
+            --primary-color: #00bfa5;
+            --primary-dark: #008f7a;
+            --text-primary: #1d2129;
+            --text-secondary: #606770;
+            --border-color: #ccd0d5;
+            --danger-color: #f02849;
+            --danger-dark: #c30d24;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+            color: var(--text-primary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+        }
+
+        .header {
+            width: 100%;
+            max-width: 1200px;
+            margin-bottom: 20px;
+            background-color: var(--surface-color);
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            color: var(--primary-color);
+        }
+
+        #addNewBtn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        #addNewBtn:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .panel {
+            background-color: var(--surface-color);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            height: calc(100vh - 150px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel h2 {
+            margin-top: 0;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            font-size: 18px;
+            color: var(--text-secondary);
+        }
+
+        #itemListContainer {
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+
+        #itemList {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        #itemList li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 5px;
+            border-bottom: 1px solid #f0f2f5;
+            transition: background-color 0.2s;
+        }
+        #itemList li:hover {
+            background-color: #f7f7f7;
+        }
+
+        #itemList li .item-name {
+            font-weight: 500;
+        }
+
+        #itemList li .item-actions button {
+            border: none;
+            padding: 6px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-left: 5px;
+            font-weight: 500;
+            color: white;
+            transition: background-color 0.2s;
+        }
+        .edit-btn { background-color: #1b74e4; }
+        .edit-btn:hover { background-color: #155abf; }
+        .delete-btn { background-color: var(--danger-color); }
+        .delete-btn:hover { background-color: var(--danger-dark); }
+        
+        #itemFormContainer {
+            overflow-y: auto;
+        }
+
+        #itemForm .form-group {
+            margin-bottom: 15px;
+        }
+
+        #itemForm label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        #itemForm input,
+        #itemForm select,
+        #itemForm textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 15px;
+            box-sizing: border-box;
+        }
+        
+        #itemForm textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        
+        #itemForm .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        #itemForm input[type="checkbox"] {
+            width: auto;
+        }
+
+        #saveBtn {
+            background-color: var(--primary-color);
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        #saveBtn:hover {
+            background-color: var(--primary-dark);
+        }
+        
+        .loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        
+        .spinner {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid var(--primary-color);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            .panel {
+                height: auto;
+                max-height: 50vh;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>GMA Admin Panel</h1>
+        <button id="addNewBtn"> + Add New Item</button>
+    </div>
+
+    <div class="container">
+        <div class="panel" id="itemListPanel">
+            <h2>All Items</h2>
+            <div id="itemListContainer">
+                <ul id="itemList"></ul>
+            </div>
+        </div>
+
+        <div class="panel" id="itemFormContainer">
+            <h2 id="formTitle">Add New Item</h2>
+            <form id="itemForm">
+                <input type="hidden" id="itemId">
+                <div class="form-group">
+                    <label for="itemName">Name</label>
+                    <input type="text" id="itemName" required>
+                </div>
+                <div class="form-group">
+                    <label for="itemType">Type</label>
+                    <select id="itemType" required>
+                        <option value="app">App</option>
+                        <option value="game">Game</option>
+                        <option value="editing">Editing</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="itemImageUrl">Icon Image URL</label>
+                    <input type="text" id="itemImageUrl">
+                </div>
+                <div class="form-group">
+                    <label for="itemUrl">Download/Watch URL</label>
+                    <input type="text" id="itemUrl">
+                </div>
+                <div class="form-group">
+                    <label for="itemVersion">Version (e.g., 1.2.3)</label>
+                    <input type="text" id="itemVersion">
+                </div>
+                <div class="form-group">
+                    <label for="itemMinAndroid">Min. Android (e.g., 5.0)</label>
+                    <input type="text" id="itemMinAndroid">
+                </div>
+                <div class="form-group">
+                    <label for="itemDesc">Description (Enter each point on a new line)</label>
+                    <textarea id="itemDesc"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="itemScreenshots">Screenshots (Enter each URL on a new line)</label>
+                    <textarea id="itemScreenshots"></textarea>
+                </div>
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="isPremium">
+                    <label for="isPremium">Is Premium? (Show in Hot Apps section)</label>
+                </div>
+
+                <button type="submit" id="saveBtn">Save Item</button>
+            </form>
+        </div>
+    </div>
+    
+    <div id="loader" class="loader hidden">
+        <div class="spinner"></div>
+    </div>
+
+    <script>
+        /********** FIREBASE CONFIGURATION **********/
+        const firebaseConfig = {
+            apiKey: "AIzaSyDl_gx63256sscVpI04yq6prtVJ1410Oak",
+            authDomain: "rbmods-app.firebaseapp.com",
+            databaseURL: "https://rbmods-app-default-rtdb.firebaseio.com",
+            projectId: "rbmods-app",
+            storageBucket: "rbmods-app.appspot.com",
+            messagingSenderId: "980274777804",
+            appId: "1:980274777804:web:c58ef569de946d8e35fc69"
+        };
+        
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        /************************************/
+
+        // DOM Elements
+        const itemListEl = document.getElementById('itemList');
+        const itemForm = document.getElementById('itemForm');
+        const formTitle = document.getElementById('formTitle');
+        const addNewBtn = document.getElementById('addNewBtn');
+        const loader = document.getElementById('loader');
+
+        // Form fields
+        const itemIdField = document.getElementById('itemId');
+        const itemNameField = document.getElementById('itemName');
+        const itemTypeField = document.getElementById('itemType');
+        const itemImageUrlField = document.getElementById('itemImageUrl');
+        const itemUrlField = document.getElementById('itemUrl');
+        const itemVersionField = document.getElementById('itemVersion');
+        const itemMinAndroidField = document.getElementById('itemMinAndroid');
+        const itemDescField = document.getElementById('itemDesc');
+        const itemScreenshotsField = document.getElementById('itemScreenshots');
+        const isPremiumField = document.getElementById('isPremium');
+        
+        let allItems = [];
+        let currentlyEditingItem = null;
+
+        function showLoader() { loader.classList.remove('hidden'); }
+        function hideLoader() { loader.classList.add('hidden'); }
+
+        async function fetchItems() {
+            showLoader();
+            try {
+                const snapshot = await database.ref('items').get();
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    // Firebase returns an object, convert it to an array
+                    allItems = Object.values(data);
+                    allItems.sort((a, b) => a.name.localeCompare(b.name));
+                } else {
+                    allItems = []; // No items found
+                }
+                renderItemList();
+            } catch (error) {
+                alert(`Error fetching items: ${error.message}`);
+                console.error(error);
+            } finally {
+                hideLoader();
+            }
+        }
+
+        function renderItemList() {
+            itemListEl.innerHTML = '';
+            allItems.forEach(item => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span class="item-name">${item.name} (${item.type})</span>
+                    <div class="item-actions">
+                        <button class="edit-btn" data-id="${item.id}">Edit</button>
+                        <button class="delete-btn" data-id="${item.id}">Delete</button>
+                    </div>
+                `;
+                itemListEl.appendChild(li);
+            });
+        }
+        
+        function handleEditClick(id) {
+            currentlyEditingItem = allItems.find(item => item.id === id);
+            if (!currentlyEditingItem) return;
+
+            formTitle.textContent = `Editing: ${currentlyEditingItem.name}`;
+            itemIdField.value = currentlyEditingItem.id;
+            itemNameField.value = currentlyEditingItem.name;
+            itemTypeField.value = currentlyEditingItem.type;
+            itemImageUrlField.value = currentlyEditingItem.imageUrl || '';
+            itemUrlField.value = currentlyEditingItem.url || '';
+            itemVersionField.value = currentlyEditingItem.version || '';
+            itemMinAndroidField.value = currentlyEditingItem.minAndroidVersion || '';
+            itemDescField.value = Array.isArray(currentlyEditingItem.desc) ? currentlyEditingItem.desc.join('\n') : (currentlyEditingItem.desc || '');
+            itemScreenshotsField.value = Array.isArray(currentlyEditingItem.screenshots) ? currentlyEditingItem.screenshots.join('\n') : '';
+            isPremiumField.checked = !!currentlyEditingItem.isPremium;
+        }
+        
+        async function handleDeleteClick(id) {
+            const itemToDelete = allItems.find(item => item.id === id);
+            if (!itemToDelete) return;
+
+            if (confirm(`Are you sure you want to delete "${itemToDelete.name}"?`)) {
+                showLoader();
+                try {
+                    await database.ref('items/' + id).remove();
+                    alert('Item deleted successfully!');
+                    await fetchItems(); // Refresh the list
+                } catch (error) {
+                    alert(`Error deleting item: ${error.message}`);
+                } finally {
+                    hideLoader();
+                }
+            }
+        }
+
+        function handleAddNewClick() {
+            itemForm.reset();
+            itemIdField.value = '';
+            currentlyEditingItem = null;
+            formTitle.textContent = 'Add New Item';
+            itemNameField.focus();
+        }
+
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            
+            const itemId = itemIdField.value || `item_${Date.now()}`;
+
+            const itemData = {
+                id: itemId,
+                name: itemNameField.value.trim(),
+                type: itemTypeField.value,
+                imageUrl: itemImageUrlField.value.trim(),
+                url: itemUrlField.value.trim(),
+                version: itemVersionField.value.trim(),
+                minAndroidVersion: itemMinAndroidField.value.trim(),
+                desc: itemDescField.value.trim().split('\n').filter(Boolean),
+                screenshots: itemScreenshotsField.value.trim().split('\n').filter(Boolean),
+                isPremium: isPremiumField.checked,
+                addedTimestamp: currentlyEditingItem?.addedTimestamp || Date.now(),
+                reviews: currentlyEditingItem?.reviews || []
+            };
+
+            if (!itemData.name || !itemData.type) {
+                alert('Name and Type are required.');
+                return;
+            }
+
+            showLoader();
+            try {
+                await database.ref('items/' + itemId).set(itemData);
+                alert('Data saved successfully!');
+                handleAddNewClick(); // Reset form
+                await fetchItems(); // Refresh the list
+            } catch (error) {
+                alert(`Error saving data: ${error.message}`);
+            } finally {
+                hideLoader();
+            }
+        }
+
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', fetchItems);
+        
+        addNewBtn.addEventListener('click', handleAddNewClick);
+
+        itemForm.addEventListener('submit', handleFormSubmit);
+
+        itemListEl.addEventListener('click', (e) => {
+            const target = e.target;
+            const id = target.dataset.id;
+            if (id) {
+                if (target.classList.contains('edit-btn')) {
+                    handleEditClick(id);
+                } else if (target.classList.contains('delete-btn')) {
+                    handleDeleteClick(id);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
