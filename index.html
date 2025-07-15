@@ -254,11 +254,16 @@
                     <input type="text" id="itemName" required>
                 </div>
                 <div class="form-group">
-                    <label for="itemType">Type</label>
-                    <select id="itemType" required>
-                        <option value="app">App</option>
-                        <option value="game">Game</option>
-                        <option value="editing">Editing</option>
+                    <label for="itemCategory">Category</label>
+                    <select id="itemCategory" required>
+                        <option value="App">General App</option>
+                        <option value="Game">Game</option>
+                        <option value="Video Editing">Video Editing</option>
+                        <option value="Photo Editing">Photo Editing</option>
+                        <option value="Movie App">Movie App</option>
+                        <option value="VPN">VPN</option>
+                        <option value="Music Player">Music Player</option>
+                        <option value="Tool">Tool</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -311,22 +316,19 @@
             appId: "1:980274777804:web:c58ef569de946d8e35fc69"
         };
         
-        // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
         /************************************/
 
-        // DOM Elements
         const itemListEl = document.getElementById('itemList');
         const itemForm = document.getElementById('itemForm');
         const formTitle = document.getElementById('formTitle');
         const addNewBtn = document.getElementById('addNewBtn');
         const loader = document.getElementById('loader');
 
-        // Form fields
         const itemIdField = document.getElementById('itemId');
         const itemNameField = document.getElementById('itemName');
-        const itemTypeField = document.getElementById('itemType');
+        const itemCategoryField = document.getElementById('itemCategory');
         const itemImageUrlField = document.getElementById('itemImageUrl');
         const itemUrlField = document.getElementById('itemUrl');
         const itemVersionField = document.getElementById('itemVersion');
@@ -347,11 +349,10 @@
                 const snapshot = await database.ref('items').get();
                 if (snapshot.exists()) {
                     const data = snapshot.val();
-                    // Firebase returns an object, convert it to an array
                     allItems = Object.values(data);
                     allItems.sort((a, b) => a.name.localeCompare(b.name));
                 } else {
-                    allItems = []; // No items found
+                    allItems = [];
                 }
                 renderItemList();
             } catch (error) {
@@ -367,7 +368,7 @@
             allItems.forEach(item => {
                 const li = document.createElement('li');
                 li.innerHTML = `
-                    <span class="item-name">${item.name} (${item.type})</span>
+                    <span class="item-name">${item.name} (${item.category || 'N/A'})</span>
                     <div class="item-actions">
                         <button class="edit-btn" data-id="${item.id}">Edit</button>
                         <button class="delete-btn" data-id="${item.id}">Delete</button>
@@ -384,7 +385,7 @@
             formTitle.textContent = `Editing: ${currentlyEditingItem.name}`;
             itemIdField.value = currentlyEditingItem.id;
             itemNameField.value = currentlyEditingItem.name;
-            itemTypeField.value = currentlyEditingItem.type;
+            itemCategoryField.value = currentlyEditingItem.category;
             itemImageUrlField.value = currentlyEditingItem.imageUrl || '';
             itemUrlField.value = currentlyEditingItem.url || '';
             itemVersionField.value = currentlyEditingItem.version || '';
@@ -403,7 +404,7 @@
                 try {
                     await database.ref('items/' + id).remove();
                     alert('Item deleted successfully!');
-                    await fetchItems(); // Refresh the list
+                    await fetchItems();
                 } catch (error) {
                     alert(`Error deleting item: ${error.message}`);
                 } finally {
@@ -428,7 +429,7 @@
             const itemData = {
                 id: itemId,
                 name: itemNameField.value.trim(),
-                type: itemTypeField.value,
+                category: itemCategoryField.value, // Changed from type to category
                 imageUrl: itemImageUrlField.value.trim(),
                 url: itemUrlField.value.trim(),
                 version: itemVersionField.value.trim(),
@@ -440,8 +441,8 @@
                 reviews: currentlyEditingItem?.reviews || []
             };
 
-            if (!itemData.name || !itemData.type) {
-                alert('Name and Type are required.');
+            if (!itemData.name || !itemData.category) {
+                alert('Name and Category are required.');
                 return;
             }
 
@@ -449,8 +450,8 @@
             try {
                 await database.ref('items/' + itemId).set(itemData);
                 alert('Data saved successfully!');
-                handleAddNewClick(); // Reset form
-                await fetchItems(); // Refresh the list
+                handleAddNewClick();
+                await fetchItems();
             } catch (error) {
                 alert(`Error saving data: ${error.message}`);
             } finally {
@@ -458,13 +459,9 @@
             }
         }
 
-        // Event Listeners
         document.addEventListener('DOMContentLoaded', fetchItems);
-        
         addNewBtn.addEventListener('click', handleAddNewClick);
-
         itemForm.addEventListener('submit', handleFormSubmit);
-
         itemListEl.addEventListener('click', (e) => {
             const target = e.target;
             const id = target.dataset.id;
